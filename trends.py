@@ -1,81 +1,59 @@
+
 import json
-import yt_dlp
+import urllib.request
+import xml.etree.ElementTree as ET
+from datetime import datetime
 
+RSS_URL = "https://trends.google.com/trending/rss?geo=US"
 
-def search_videos(keyword):
-    options = {
-        "quiet": True,
-        "no_warnings": True,
-        "ignoreerrors": True,
-        "skip_download": True
-    }
+def get_trends():
+    request = urllib.request.Request(
+        RSS_URL,
+        headers={"User-Agent": "Mozilla/5.0"}
+    )
 
+    with urllib.request.urlopen(request, timeout=30) as response:
+        content = response.read()
+
+    root = ET.fromstring(content)
     results = []
 
-    with yt_dlp.YoutubeDL(options) as ydl:
-        data = ydl.extract_info(
-            "ytsearch20:" + keyword,
-            download=False
-        )
+    for item in root.findall(".//item"):
+        title = item.findtext("title", "بدون عنوان")
+        link = item.findtext("link", "")
 
-        if not data:
-            return results
-
-        for video in data.get("entries", []):
-            if not video:
-                continue
-
-            results.append({
-                "title": video.get("title", "بدون عنوان"),
-                "views": video.get("view_count") or 0,
-                "link": video.get("webpage_url") or (
-                    "https://www.youtube.com/watch?v=" +
-                    video.get("id", "")
-                )
-            })
+        results.append({
+            "topic": title,
+            "link": link,
+            "source": "Google Trends"
+        })
 
     return results
 
-
 def main():
-    with open("ideas.json", encoding="utf-8") as file:
-        ideas = json.load(file)
+    print("TimeTraveler AI")
+    print("جاري اكتشاف المواضيع الرائجة...")
 
-    all_videos = {}
+    try:
+        trends = get_trends()
 
-    for keyword in ideas["search_terms"]:
-        print("جاري البحث:", keyword)
+        data = {
+            "updated": datetime.now().isoformat(),
+            "count": len(trends),
+            "trends": trends
+        }
 
-        try:
-            videos = search_videos(keyword)
+        with open("results.json", "w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
 
-            for video in videos:
-                all_videos[video["link"]] = video
+        print("تم حفظ النتائج بنجاح!")
+        for number, item in enumerate(trends, 1):
+            print(f"{number}. {item['topic']}")
+            print(item["link"])
 
-        except Exception as error:
-            print("حدث خطأ:", error)
-
-    sorted_videos = sorted(
-        all_videos.values(),
-        key=lambda x: x["views"],
-        reverse=True
-    )
-
-    with open("results.json", "w", encoding="utf-8") as file:
-        json.dump(
-            sorted_videos,
-            file,
-            ensure_ascii=False,
-            indent=4
-        )
-
-    print("\nتم حفظ النتائج!")
-
-    for video in sorted_videos[:20]:
-        print("\nالعنوان:", video["title"])
-        print("المشاهدات:", video["views"])
-        print("الرابط:", video["link"])
-
+    except Exception as error:
+        print("تعذر جلب الترندات:", error)
+        raise
 
 if __name__ == "__main__":
     main()

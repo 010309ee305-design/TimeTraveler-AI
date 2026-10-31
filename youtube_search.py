@@ -4,9 +4,10 @@ import requests
 
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
+
 def search_videos(keyword):
     if not API_KEY:
-        print("خطأ: مفتاح YouTube API غير موجود")
+        print("YouTube API key missing")
         return []
 
     url = "https://www.googleapis.com/youtube/v3/search"
@@ -25,12 +26,13 @@ def search_videos(keyword):
 
     return response.json().get("items", [])
 
+
 def main():
     with open("ideas.json", encoding="utf-8") as file:
         ideas = json.load(file)
 
     for keyword in ideas["search_terms"]:
-        print("\nالبحث عن:", keyword)
+        print("\nSearching:", keyword)
 
         videos = search_videos(keyword)
 
@@ -38,8 +40,9 @@ def main():
             title = video["snippet"]["title"]
             video_id = video["id"]["videoId"]
 
-            print("العنوان:", title)
-            print("الرابط: https://youtube.com/watch?v=" + video_id)
+            print("Title:", title)
+            print("Link: https://youtube.com/watch?v=" + video_id)
+
 
 if __name__ == "__main__":
     main()
